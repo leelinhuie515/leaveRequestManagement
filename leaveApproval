@@ -1,0 +1,108 @@
+function getEmailArray() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var dataRange = sheet.getDataRange();
+  var lastRow = dataRange.getLastRow();
+  var emailColumn = sheet.getRange(2, 2, lastRow - 1, 1); // Assuming emails are in column B, starting from row 2
+  var emailValues = emailColumn.getValues();
+  var emailArray = emailValues.map(row => row[0]); // Extract email addresses into an array
+  return emailArray;
+}
+
+function sendEmailNotification(e) {
+  try {
+    var emailArray = getEmailArray();
+    for (var i = 0; i < emailArray.length; i++) {
+      var email = emailArray[i];
+      var subject = "Leave Request Received";
+      var body = "Hi, we've received your leave request." +
+        "Your request will be reviewed, and you will be notified of the decision soon.\n\n" +
+        "Best regards,\nHR Department";
+
+      MailApp.sendEmail(email, subject, body);
+      Logger.log("Notification email sent to " + email);
+    }
+  } catch (error) {
+    Logger.log("Error in sendEmailNotification: " + error.message);
+  }
+}
+
+function setUpTrigger() {
+  try {
+    var form = FormApp.openById('1UeZrQnw8_dlP-kt2UrIQlmymaexa2oVYeyDx8DViAmU');
+    ScriptApp.newTrigger('sendEmailNotification')
+      .forForm(form)
+      .onFormSubmit()
+      .create();
+
+    Logger.log("Trigger created successfully.");
+  } catch (error) {
+    Logger.log("Error in setUpTrigger: " + error.message);
+  }
+}
+
+function approveLeave() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const targetColumn = 7; // Specify the desired column
+
+  // Insert a new column after the specified column
+  sheet.insertColumnAfter(targetColumn);
+
+  // Set the header for the new column
+  sheet.getRange(1, targetColumn + 1).setValue('Status');
+
+  // Insert the status in the second row of the new column
+  sheet.getRange(2, targetColumn + 1).setValue('Approved');
+}
+
+
+function notifyLeaveApproval() {
+  try {
+    var sheet = SpreadsheetApp.getActiveSheet();
+    var lastRow = sheet.getLastRow();
+
+    // Loop through each row starting from the second row
+    for (var i = 2; i <= lastRow; i++) {
+      var data = sheet.getRange(i, 1, 1, sheet.getLastColumn()).getValues()[0];
+      var approvalStatus = data[data.length - 1]; // Assuming approval status is in the last column
+
+      if (approvalStatus === 'Approved') {
+        var email = data[1]; // Assuming email is in the second column (index 1)
+        var employeeName = data[2]; // Assuming employee name is in the third column (index 2)
+        var leaveType = data[3]; // Assuming leave type is in the fourth column (index 3)
+        var dates = data[4]; // Assuming start and end dates are in the fifth column (index 4)
+        var reason = data[5]; // Assuming reason for leave is in the sixth column (index 5)
+        var department = data[6];
+
+        var subject = "Leave Request Status: " + approvalStatus;
+        var body = "Dear " + employeeName + ",\n\n" +
+          "Your leave request has been " + approvalStatus.toLowerCase() + ". Details of your request:\n\n" +
+          "Leave Type: " + leaveType + "\n" +
+          "Dates: " + dates + "\n" +
+          "Reason: " + reason + "\n" +
+          "Department:" + department + "\n\n" +
+          "If you have any questions, please contact HR.\n\n" +
+          "Best regards,\nHR Department";
+
+        MailApp.sendEmail(email, subject, body);
+        Logger.log("Approval notification sent to " + email);
+      }
+    }
+  } catch (error) {
+    Logger.log("Error in notifyLeaveApproval: " + error.message);
+  }
+}
+
+function setUpApprovalTrigger() {
+  try {
+    var form = FormApp.openById('1UeZrQnw8_dlP-kt2UrIQlmymaexa2oVYeyDx8DViAmU');
+    ScriptApp.newTrigger('approveLeave')
+      .forForm(form)
+      .onFormSubmit()
+      .create();
+
+    Logger.log("Approval trigger created successfully.");
+  } catch (error) {
+    Logger.log("Error in setUpApprovalTrigger: " + error.message);
+  }
+}
+
